@@ -16,18 +16,18 @@ import tensorflow as tf
 import logging
 
 import eval as myeval
-import reader_bow
+import reader_embedding
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
-
 
 flags = tf.flags
 
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
 flags.DEFINE_string("test_dir", "/Users/lujiang/run/", "Testing output directory")
-flags.DEFINE_string("model", "bow", "model_name")
+flags.DEFINE_string("model", "lstm_q", "model_name")
 
-flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/bow_ts.p", "data_path")
+flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_ts.p", "data_path")
+flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
 flags.DEFINE_string("ground_truth_file", "/Users/lujiang/data/memex_dataset/exp/qa_album.p", "ground_truth_file")
 
 flags.DEFINE_integer("batch_size", 4, "test batch size")
@@ -41,7 +41,7 @@ def test_model(infile):
   test_dir = os.path.join(FLAGS.test_dir, FLAGS.model)
   
   logging.info("Start loading the data")
-  test_data = reader_bow.DataSet(infile)
+  test_data = reader_embedding.DataSet(infile)
   logging.info("Finish loading the data")
 
   epoch_size = int(np.floor(test_data.num_examples/batch_size)) + 1
@@ -71,13 +71,20 @@ def test_model(infile):
 
 
     placeholders = {}
-    placeholders["BoWs"] = tf.placeholder(tf.float32, [batch_size, len(test_data.vocabulary)])
-    placeholders["Is"] = tf.placeholder(tf.float32, [batch_size, test_data.image_feature_dim])
+    placeholders["Qs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Qs_l"] = tf.placeholder(tf.int32, [batch_size,])
+
+    placeholders["Is"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Gs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Ts"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
     placeholders["labels"] = tf.placeholder(tf.int32, [batch_size, test_data.num_classes])
+
+    placeholders["ATs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["PTs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
 
     
     # Build a Graph that computes predictions from the inference model.
-    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, test_data._num_classes)
+    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, FLAGS.photo_feat, len(test_data.vocabulary), test_data._num_classes)
 
     # Add to the Graph the Ops for loss calculation.
     loss = models.calculate_softmax_loss(predictions, placeholders["labels"])
@@ -113,7 +120,7 @@ def test_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "As"]]
+      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       
@@ -151,6 +158,8 @@ def test_model(infile):
     # output the predictions
     utils.write_prediction_csv(os.path.join(test_dir, "predictions.csv"), results)
     myeval.evaluate_csv(os.path.join(test_dir, "predictions.csv"), FLAGS.ground_truth_file)
+
+
 
 def main(_):
   if not FLAGS.data_path: raise ValueError("Must set --data_path to the test data file")

@@ -13,21 +13,22 @@ import logging
 
 import utils
 import eval as myeval
-import reader_bow
+import reader_embedding
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
  
 flags = tf.flags
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
-flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/bow_tr.p", "data_path")
-flags.DEFINE_string("model", "bow", "model_name")
+flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_tr.p", "data_path")
+flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
+flags.DEFINE_string("model", "lstm_q", "model_name")
+
 
 flags.DEFINE_integer("batch_size", 64, "training batch size")
 flags.DEFINE_boolean("retrain", False, "whether to retrain or not")
 
 FLAGS = flags.FLAGS
-
 
 
 def train_model(infile):
@@ -36,7 +37,7 @@ def train_model(infile):
   train_dir = os.path.join(FLAGS.train_dir, FLAGS.model)
   
   logging.info("Start loading the data")
-  train_data = reader_bow.DataSet(infile)
+  train_data = reader_embedding.DataSet(infile)
   logging.info("Finish loading the data")
 
   epoch_size = int(np.floor(train_data.num_examples/batch_size))
@@ -62,13 +63,16 @@ def train_model(infile):
     global_step = tf.Variable(0, name='global_step', trainable=False, dtype=tf.int32)
     
     placeholders = {}
-    placeholders["BoWs"] = tf.placeholder(tf.float32, [batch_size, len(train_data.vocabulary)])
-    placeholders["Is"] = tf.placeholder(tf.float32, [batch_size, train_data.image_feature_dim])
+    placeholders["Qs"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
+    placeholders["Qs_l"] = tf.placeholder(tf.int32, [batch_size,])
+    
+    placeholders["Is"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
+    placeholders["Gs"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
+    placeholders["Ts"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
     placeholders["labels"] = tf.placeholder(tf.int32, [batch_size, train_data.num_classes])
 
-
     # Build a Graph that computes predictions from the inference model.
-    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, train_data._num_classes)
+    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, FLAGS.photo_feat, len(train_data.vocabulary), train_data._num_classes)
 
     # Add to the Graph the Ops for loss calculation.
     loss = models.calculate_softmax_loss(predictions, placeholders["labels"])
@@ -107,7 +111,7 @@ def train_model(infile):
     
     iter_eval = myeval.Eval_Metrics() 
 
-    for _ in xrange(int(1e05)):
+    for _ in xrange(int(1e06)):
       
       start_time = time.time()
       
@@ -118,7 +122,7 @@ def train_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "As"]]
+      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       

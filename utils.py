@@ -5,6 +5,7 @@ Created on Mar 31, 2017
 '''
 import tensorflow as tf
 import numpy as np
+import csv
 
 def flat_arrays(data):
   result = []
@@ -49,10 +50,18 @@ def update_epoch_info(summary_writer, epoch_info):
                           epoch_info["accuracy"], epoch_info["examples_per_sec"])
   return info_str
 
-
 def make_summary(name, value):
   this_summary = tf.Summary()
   item = this_summary.value.add()
   item.tag = name
   item.simple_value = value
   return this_summary
+
+def write_prediction_csv(outfile, results):
+  with open(outfile, 'wb') as csvfile:
+    mywriter = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    for i in range(len(results)):
+      row = []
+      for t in results[i]:
+        row.append(str(t))
+      mywriter.writerow(row)

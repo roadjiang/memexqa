@@ -273,7 +273,6 @@ def build_dataset():
     Is = sum([aid2photo_feat_rowid[k] for k in t["album_ids"]],[])
     Is = np.random.choice(Is, min(8, len(Is)), replace=False)
     
-
     if t["question_id"] in tr_qids:
       tr["qids"].append(t["question_id"])
       tr["labels"].append(t["ml_answer_class"])
@@ -308,31 +307,28 @@ def build_dataset():
   pickle.dump(tr, open(os.path.join(outdir, "lr_embedding_tr.p"), "wb"))
   pickle.dump(ts, open(os.path.join(outdir, "lr_embedding_ts.p"), "wb"))
   
+  
+  
   # bow baseline
-  modalities = ["qids", "labels", "Is", "Qs", "BoWs", "As"]
+  modalities = ["qids", "labels", "Is", "BoWs", "As"]
   tr = {t:[] for t in modalities}
   ts = {t:[] for t in modalities}
   
   for t in qa:
-    album_feat_row_ids = [np.where(aids == k)[0][0] for k in t["album_ids"]]
-    if len(album_feat_row_ids) > 1: this_feat = album_feat[album_feat_row_ids,].mean(0)
-    else: this_feat = album_feat[album_feat_row_ids[0],]
-    
     Ts = [aid2album[k]["ml_album_when"] for k in t["album_ids"]]
-    Gs = []
-    ATs = []
-    PTs = []
-    for k in t["album_ids"]: 
-      Gs.extend(aid2album[k]["ml_album_where"])
-      ATs.extend(aid2album[k]["ml_album_title"])
-      PTs = sum(aid2album[k]["ml_photo_titles"], [])
+    Gs = [aid2album[k]["ml_album_where"] for k in t["album_ids"]]
+    ATs = [aid2album[k]["ml_album_title"] for k in t["album_ids"]]
+    PTs = [sum(aid2album[k]["ml_photo_titles"],[]) for k in t["album_ids"]]
     
     bow = np.zeros(len(vocabulary))
     bow[t["ml_question"]] += 1
     bow[Ts] += 1
-    bow[Gs] += 1
-    bow[ATs] += 1
-    bow[PTs] += 1
+    bow[sum(Gs,[])] += 1
+    bow[sum(ATs, [])] += 1
+    bow[sum(PTs, [])] += 1
+    
+    Is = sum([aid2photo_feat_rowid[k] for k in t["album_ids"]],[])
+    this_feat = photo_feat[Is,].mean(0)
     
     divdnorm = np.sum(bow*bow)
     assert  divdnorm != 0 # bow cannot be all zeros
@@ -341,14 +337,12 @@ def build_dataset():
     if t["question_id"] in tr_qids:
       tr["qids"].append(t["question_id"])
       tr["labels"].append(t["ml_answer_class"])
-      tr["Qs"].append(t["ml_question"])
       tr["As"].append(t["ml_multiple_choice_classes"])
       tr["Is"].append(this_feat)
       tr["BoWs"].append(bow)
     elif t["question_id"] in ts_qids:
       ts["qids"].append(t["question_id"])
       ts["labels"].append(t["ml_answer_class"])
-      ts["Qs"].append(t["ml_question"])
       ts["As"].append(t["ml_multiple_choice_classes"])
       ts["Is"].append(this_feat)
       ts["BoWs"].append(bow)

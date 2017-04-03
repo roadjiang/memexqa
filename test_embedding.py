@@ -8,7 +8,7 @@ import time
 import os
 
 
-import csv
+import utils
 
 import numpy as np
 import models
@@ -109,7 +109,7 @@ def test_model(infile):
     
     start_time = time.time()
     
-    for _ in xrange(int(1e07)):
+    for _ in xrange(int(1e10)):
     
       # get the next mini-batch data
       batch_data = test_data.next_batch(batch_size)
@@ -118,7 +118,7 @@ def test_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "PTs", "ATs"]]
+      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       
@@ -128,7 +128,6 @@ def test_model(infile):
       global_step_val = global_step_val + 1
       
       #predictions_val = np.random.rand(batch_size, test_data._num_classes) # random baseline
-
       duration = time.time() - start_time
 
       iter_accuracy = myeval.calculate_accuracy_batch(predictions_val, batch_data["labels"])
@@ -155,17 +154,10 @@ def test_model(infile):
     logging.info(epoch_info_str)
     
     # output the predictions
-    write_prediction_csv(os.path.join(test_dir, "predictions.csv"), results)
+    utils.write_prediction_csv(os.path.join(test_dir, "predictions.csv"), results)
     myeval.evaluate_csv(os.path.join(test_dir, "predictions.csv"), FLAGS.ground_truth_file)
 
-def write_prediction_csv(outfile, results):
-  with open(outfile, 'wb') as csvfile:
-    mywriter = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-    for i in range(len(results)):
-      row = []
-      for t in results[i]:
-        row.append(str(t))
-      mywriter.writerow(row)
+
 
 def main(_):
   if not FLAGS.data_path: raise ValueError("Must set --data_path to the test data file")

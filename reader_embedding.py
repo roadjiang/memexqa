@@ -13,9 +13,7 @@ import utils
 
 class DataSet(object):
   
-
-
-  def __init__(self, infile, max_input_window_size = 8):
+  def __init__(self, infile, max_input_window_size = 12):
     dataset = pickle.load(open(infile, "rb"))
     
     self._data = dataset
@@ -40,7 +38,7 @@ class DataSet(object):
     self._data["PTs"], self._data["PTs_l"] = utils.pad_input(self._data["PTs"], max_input_window_size, self._end_token_id)
 
     
-    self._modalities = ["qids", "labels", "Qs", "Is", "Ts", "Gs", "PTs", "ATs" ]
+    self._modalities = ["qids", "labels", "As", "Qs", "Is", "Ts", "Gs", "PTs", "ATs", "Qs_l"]
 
     
     self._num_examples = len(self._data["qids"])
@@ -91,14 +89,6 @@ class DataSet(object):
       for k in self._modalities:
         if k in self._data:
           self._data[k] = self._data[k][perm]
-      
-#       self._Qs = self._Qs[perm]
-#       self._As = self._As[perm]
-#       self._Is = self._Is[perm]
-#       self._Ts = self._Ts[perm]
-#       self._Gs = self._Gs[perm]
-#       self._labels = self._labels[perm]
-#       self._ids = self._ids[perm]
 
       # Start next epoch
       start = 0
@@ -107,12 +97,10 @@ class DataSet(object):
     end = self._index_in_epoch
     
     batch = {}
-    
-
     for k in self._modalities:
       if k in self._data:
-        if k == "ATs": continue
-        if k == "PTs": continue
+        if k == "As": continue
+        if k in ["ATs", "PTs"]: continue
         batch[k] = self._data[k][start:end]
         
     batch["qids"] = batch["qids"].reshape(-1,1)

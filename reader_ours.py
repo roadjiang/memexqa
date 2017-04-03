@@ -39,8 +39,6 @@ class DataSet(object):
     
     self._max_window_size = max_input_window_size
     
-    
-
     self._Qs, self._Qs_len = self._pad_input(self._Qs, max_input_window_size, self._end_token_id)
     self._Ts, _ = self._pad_input(self._Ts, 1, self._end_token_id)
     self._Gs, _ = self._pad_input(self._Gs, 3, self._end_token_id)

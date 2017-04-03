@@ -33,7 +33,7 @@ def build_lr_embedding_q_i(placeholders, photo_feat_file, vocabulary_size, num_c
     _, photo_feat = pickle.load(open(photo_feat_file, "rb"))
     i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
     i_vec = tf.nn.embedding_lookup(i_embedding, placeholders["Is"])
-    i_vec = tf.reduce_max(i_vec, 1)
+    i_vec = tf.reduce_mean(i_vec, 1)
     
     inputs = tf.concat(1, [q_vec, i_vec])
     
@@ -46,32 +46,77 @@ def build_lr_embedding_q_i(placeholders, photo_feat_file, vocabulary_size, num_c
 def train_lr_embedding_q_i(loss, global_step):
   return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
 
-
-def build_lr_embedding_q_i_gt(q_placeholder, i_placeholder, g_placeholder, t_placeholder, vocabulary_size, num_classes, embedding_size = 300, device="cpu"):
-  """logistic regression with embedding input"""
-  with tf.name_scope('lr_Q_I_GT'):
-    with tf.device("/{}:0".format(device)):
-      embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
-      q_embedding = tf.nn.embedding_lookup(embedding, q_placeholder)
-      q_embedding = tf.reduce_max(q_embedding, 1)
-      
-      g_embedding = tf.nn.embedding_lookup(embedding, g_placeholder)
-      g_embedding = tf.reduce_max(g_embedding, 1)
-      
-      t_embedding = tf.nn.embedding_lookup(embedding, t_placeholder)
-      t_embedding = tf.reduce_max(t_embedding, 1)
-      
-      #i2v_w = tf.get_variable("i2v_w", [i_placeholder.get_shape()[1], embedding_size*3], initializer=tf.random_normal_initializer())
-      #i2v_b = tf.get_variable("i2v_b", [embedding_size*3], initializer=tf.random_normal_initializer())
-      #i2v_o = tf.matmul(i_placeholder, i2v_w) + i2v_b
-      inputs = tf.concat(1, [q_embedding, i_placeholder, g_embedding, t_embedding])
-      
-      # add a fully connected layer
-      fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], num_classes], initializer=tf.random_normal_initializer())
-      fc1_b = tf.get_variable("fc1_b", [num_classes], initializer=tf.random_normal_initializer())
-      fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
+def build_bow(placeholders, num_classes):
+  with tf.name_scope('bow'):
+    inputs = tf.concat(1, [placeholders["Is"], placeholders["BoWs"]])
+    fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], num_classes], initializer=tf.random_normal_initializer())
+    fc1_b = tf.get_variable("fc1_b", [num_classes], initializer=tf.random_normal_initializer())
+    fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
   return fc1_o
 
+def train_bow(loss, global_step):
+  return train(loss, global_step, 0.5, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+
+def build_lstm_q(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
+  with tf.name_scope('lstm_Q'):
+    batch_size = int(placeholders["Qs"]._shape[0])
+    num_steps = int(placeholders["Qs"]._shape[1])
+    num_layers = 1
+    
+    q_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.BasicLSTMCell(embedding_size, forget_bias=0.0, state_is_tuple=True)] * num_layers, state_is_tuple=True)
+    q_initial_state = q_cell.zero_state(batch_size, tf.float32)
+    q_embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
+    q_inputs = tf.nn.embedding_lookup(q_embedding, placeholders["Qs"])
+    q_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, q_inputs)]
+    with tf.variable_scope('q_lstm'):
+      _, q_states = tf.nn.rnn(cell=q_cell, inputs=q_inputs, sequence_length=placeholders["Qs_l"], initial_state=q_initial_state)
+
+    inputs = q_states[-1][1]  # get the last hidden states (dynamic length)
+
+    fc_hidden_nodes = 512
+    fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], fc_hidden_nodes], initializer=tf.random_normal_initializer())
+    fc1_b = tf.get_variable("fc1_b", [fc_hidden_nodes], initializer=tf.random_normal_initializer())
+    fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
+    
+    fc2_w = tf.get_variable("fc2_w", [fc_hidden_nodes, num_classes], initializer=tf.random_normal_initializer())
+    fc2_b = tf.get_variable("fc2_b", [num_classes], initializer=tf.random_normal_initializer())
+    fc2_o = tf.nn.relu(tf.matmul(fc1_o, fc2_w) + fc2_b)
+    return fc2_o
+  
+def train_lstm_q(loss, global_step):
+  return train(loss, global_step, 0.3, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+
+
+def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
+  with tf.name_scope('lstm_Q_I'):
+    batch_size = int(placeholders["Qs"]._shape[0])
+    num_steps = int(placeholders["Qs"]._shape[1])
+    num_layers = 1
+    
+    
+    _, photo_feat = pickle.load(open(photo_feat_file, "rb"))
+    i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
+    
+    q_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.BasicLSTMCell(embedding_size, forget_bias=0.0, state_is_tuple=True)] * num_layers, state_is_tuple=True)
+    q_initial_state = q_cell.zero_state(batch_size, tf.float32)
+    q_embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
+    q_inputs = tf.nn.embedding_lookup(q_embedding, placeholders["Qs"])
+    q_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, q_inputs)]
+    with tf.variable_scope('q_lstm'):
+      _, q_states = tf.nn.rnn(cell=q_cell, inputs=q_inputs, sequence_length=placeholders["Qs_l"], initial_state=q_initial_state)
+
+    inputs = q_states[-1][1]  # get the last hidden states (dynamic length)
+
+    fc_hidden_nodes = 512
+    fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], fc_hidden_nodes], initializer=tf.random_normal_initializer())
+    fc1_b = tf.get_variable("fc1_b", [fc_hidden_nodes], initializer=tf.random_normal_initializer())
+    fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
+    
+    fc2_w = tf.get_variable("fc2_w", [fc_hidden_nodes, num_classes], initializer=tf.random_normal_initializer())
+    fc2_b = tf.get_variable("fc2_b", [num_classes], initializer=tf.random_normal_initializer())
+    fc2_o = tf.nn.relu(tf.matmul(fc1_o, fc2_w) + fc2_b)
+    return fc2_o
+  
 
 def build_ours(q_placeholder, q_len_placeholder, i_placeholder, g_placeholder, t_placeholder, pt_placeholder, at_placeholder, vocabulary_size, num_classes, embedding_size = 100):
   """logistic regression with embedding input"""
@@ -90,22 +135,22 @@ def build_ours(q_placeholder, q_len_placeholder, i_placeholder, g_placeholder, t
     at_initial_state = at_cell.zero_state(batch_size, tf.float32)
 
 
-    with tf.device("/cpu:0"):
-      embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
-      q_inputs = tf.nn.embedding_lookup(embedding, q_placeholder)
-      q_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, q_inputs)]
-      with tf.variable_scope('q_lstm'):
-        _, q_states = tf.nn.rnn(q_cell, q_inputs, initial_state=q_initial_state)
-        
-      pt_inputs = tf.nn.embedding_lookup(embedding, pt_placeholder)
-      pt_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, pt_inputs)]
-      with tf.variable_scope('pt_lstm'):
-        _, pt_states = tf.nn.rnn(pt_cell, pt_inputs, initial_state=pt_initial_state)
 
-      at_inputs = tf.nn.embedding_lookup(embedding, at_placeholder)
-      at_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, at_inputs)]
-      with tf.variable_scope('at_lstm'):
-        _, at_states = tf.nn.rnn(pt_cell, at_inputs, initial_state=at_initial_state)    
+    embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
+    q_inputs = tf.nn.embedding_lookup(embedding, q_placeholder)
+    q_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, q_inputs)]
+    with tf.variable_scope('q_lstm'):
+      _, q_states = tf.nn.rnn(q_cell, q_inputs, initial_state=q_initial_state)
+      
+    pt_inputs = tf.nn.embedding_lookup(embedding, pt_placeholder)
+    pt_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, pt_inputs)]
+    with tf.variable_scope('pt_lstm'):
+      _, pt_states = tf.nn.rnn(pt_cell, pt_inputs, initial_state=pt_initial_state)
+
+    at_inputs = tf.nn.embedding_lookup(embedding, at_placeholder)
+    at_inputs = [tf.squeeze(t, [1]) for t in tf.split(1, num_steps, at_inputs)]
+    with tf.variable_scope('at_lstm'):
+      _, at_states = tf.nn.rnn(pt_cell, at_inputs, initial_state=at_initial_state)    
     
     #states = states[num_steps,] # get the last states
 
@@ -135,14 +180,7 @@ def build_ours(q_placeholder, q_len_placeholder, i_placeholder, g_placeholder, t
 
   return fc2_o
 
-def build_lr_bow(i_placeholder, bow_placeholder, num_classes):
-  with tf.name_scope('BOW'):
-    with tf.device("/cpu:0"):
-      inputs = tf.concat(1, [i_placeholder, bow_placeholder])
-      fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], num_classes], initializer=tf.random_normal_initializer())
-      fc1_b = tf.get_variable("fc1_b", [num_classes], initializer=tf.random_normal_initializer())
-      fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
-  return fc1_o
+
 
 def calculate_xentropy_loss(outputs, labels):
   with tf.name_scope('loss'):

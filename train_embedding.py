@@ -61,7 +61,6 @@ def train_model(infile):
   
   if not os.path.exists(train_dir):
     os.makedirs(train_dir)
-  
 
   with tf.Graph().as_default(), tf.Session() as session:
     logging.info("Start constructing computation graph.")
@@ -118,7 +117,7 @@ def train_model(infile):
     
     iter_eval = myeval.Eval_Metrics() 
 
-    for _ in xrange(int(1e06)):
+    for _ in xrange(int(1e05)):
       
       start_time = time.time()
       
@@ -129,12 +128,11 @@ def train_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "PTs", "ATs"]]
+      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       
       feed_dict[placeholders["labels"]] = batch_binary_labels
-
        
       # run the graph
       global_step_val, _, loss_val, predictions_val, lr_val = session.run([global_step, train_op, loss, predictions, lr], feed_dict=feed_dict)

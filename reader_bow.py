@@ -14,23 +14,27 @@ class DataSet(object):
 
 
   def __init__(self, infile):
-    tr = pickle.load(open(infile, "rb"))
+    dataset = pickle.load(open(infile, "rb"))
     
-    self._ids = tr["qids"]
-    self._labels = tr["labels"]
-    self._Is = tr["Is"]
-    self._As = tr["As"]
-    self._BoWs = tr["BoWs"]
-    self._vocabulary = tr["vocabulary"]
-    self._classes = tr["classes"]
+    self._data = dataset
+    
+    self._modalities = ["qids", "labels", "As", "BoWs", "Is" ]
+
+        
+#     self._data["qids"] = dataset["qids"]
+#     self._labels = dataset["labels"]
+#     self._Is = dataset["Is"]
+#     self._BoWs = dataset["BoWs"]
+#     self._vocabulary = tr["vocabulary"]
+#     self._classes = tr["classes"]
     
     # pad and truncate input questions
-    self._image_feat_dim = self._Is.shape[1]
+    self._image_feat_dim = self._data["Is"].shape[1]
 
-    self._num_examples = len(self._ids)
-    self._vocabulary_size = len(self._vocabulary)
-    self._num_classes = len(self._classes)
-     
+    self._num_examples = len(self._data["qids"])
+    self._vocabulary_size = len(self._data["vocabulary"])
+    self._num_classes = len(self._data["classes"])
+    
     self._epochs_completed = 0
     self._index_in_epoch = 0
 
@@ -39,20 +43,16 @@ class DataSet(object):
     return self._num_examples
   
   @property
-  def max_window_size(self):
-    return self._max_window_size
-  
-  @property
   def num_classes(self):
     return self._num_classes
   
   @property
   def vocabulary(self):
-    return self._vocabulary
+    return self._data["vocabulary"]
 
   @property
   def classes(self):
-    return self._classes
+    return self._data["classes"]
   
   @property
   def epochs_completed(self):
@@ -74,11 +74,10 @@ class DataSet(object):
       # shuffle the data
       perm = np.arange(self.num_examples)
       np.random.shuffle(perm)
-      self._As = self._As[perm]
-      self._Is = self._Is[perm]
-      self._BoWs = self._BoWs[perm]
-      self._labels = self._labels[perm]
-      self._ids = self._ids[perm]
+      
+      for k in self._modalities:
+        if k in self._data:
+          self._data[k] = self._data[k][perm]
       
       # Start next epoch
       start = 0
@@ -86,16 +85,22 @@ class DataSet(object):
       assert batch_size <= self.num_examples
     end = self._index_in_epoch
     
-    ids = self._ids[start:end].reshape(-1,1)
-    Is = self._Is[start:end]
-    BoWs = self._BoWs[start:end]
+    batch = {}
+    for k in self._modalities:
+      if k in self._data:
+        if k == "As": continue
+        batch[k] = self._data[k][start:end]
+    
+    batch["qids"] = batch["qids"].reshape(-1,1)
+
 
     labels = np.zeros((batch_size, self.num_classes))
     for i in range(batch_size):
-      labels[i,self._As[start+i,]] = -1
-      labels[i,self._labels[(start+i)]] = 1
+      labels[i,self._data["As"][start+i,]] = -1
+      labels[i,self._data["labels"][(start+i)]] = 1
     
-    batch = {"labels":labels, "Is":Is, "ids":ids, "BoWs":BoWs}
+    batch["labels"] = labels
+    
     return batch
   
 
