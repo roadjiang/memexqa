@@ -39,7 +39,6 @@ def train_model(infile):
   """Runs the model on the given data."""
   batch_size = FLAGS.batch_size
   train_dir = os.path.join(FLAGS.train_dir, FLAGS.model)
-  starter_learning_rate = FLAGS.start_learning_rate
   
   logging.info("Start loading the data")
   train_data = reader_embedding.DataSet(infile)
@@ -55,8 +54,7 @@ def train_model(infile):
   parameter_info.append("====================")
   parameter_info.append("model = {}".format(FLAGS.model))
   parameter_info.append("#train_examples = {}".format(train_data.num_examples))
-  parameter_info.append("batch_size = {}\nstarter_learning_rate = {}".
-               format(batch_size,starter_learning_rate))
+  parameter_info.append("batch_size = {}".format(batch_size))
   parameter_info.append("#iterations per epoch = {}".format(epoch_size))
   parameter_info.append("====================")
   logging.info("\n".join(parameter_info))
