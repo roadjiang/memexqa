@@ -26,7 +26,6 @@ flags.DEFINE_string("model", "lr_embedding_q_i", "model_name")
 
 
 flags.DEFINE_integer("batch_size", 64, "training batch size")
-flags.DEFINE_float("start_learning_rate", 0.5, "starting learning rate")
 flags.DEFINE_boolean("retrain", False, "whether to retrain or not")
 
 FLAGS = flags.FLAGS

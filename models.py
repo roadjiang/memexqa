@@ -30,7 +30,7 @@ def build_lr_embedding_q_i(placeholders, photo_feat_file, vocabulary_size, num_c
     q_vec = tf.nn.embedding_lookup(q_embedding, placeholders["Qs"])
     q_vec = tf.reduce_max(q_vec, 1)
     
-    _, photo_feat = pickle.load(open("/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "rb"))
+    _, photo_feat = pickle.load(open(photo_feat_file, "rb"))
     i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
     i_vec = tf.nn.embedding_lookup(i_embedding, placeholders["Is"])
     i_vec = tf.reduce_max(i_vec, 1)
