@@ -9,6 +9,7 @@ import pickle
 import csv
 import nltk
 
+import sklearn.decomposition
 import collections
 import re
 import json
@@ -142,6 +143,8 @@ def build_dataset():
   qids = np.unique([t["question_id"] for t in qa])
   qids= np.setdiff1d(qids, bad_qids)
   qa = [t for t in qa if t["question_id"] in qids]
+  
+  
 
 # split by users
 #   test_user_dict = {t:t for t in load_txt(testuserfile)}
@@ -158,9 +161,16 @@ def build_dataset():
   #aid2pid = {t["album_id"]:t["photo_ids"] for t in album}
 
   photo_feat = load_npz(featfile, pids)
+  pca = sklearn.decomposition.PCA(300)
+  
+  photo_feat_pca = pca.fit_transform(photo_feat)
+  
   # l2 norm cnn
   for i in range(photo_feat.shape[0]):  photo_feat[i,] = photo_feat[i,]/np.sqrt(np.sum(photo_feat[i,]*photo_feat[i,]))
+  for i in range(photo_feat.shape[0]):  photo_feat_pca[i,] = photo_feat_pca[i,]/np.sqrt(np.sum(photo_feat_pca[i,]*photo_feat_pca[i,]))
 
+  
+  
   
 #   aids = np.array(aid2rowid.keys())
 #   album_feat = np.zeros([len(aids), photo_feat.shape[1]])
@@ -252,6 +262,8 @@ def build_dataset():
   outdir = "/Users/lujiang/data/memex_dataset/exp/"
   pickle.dump([qa, album], open(os.path.join(outdir, "qa_album.p"), "wb"))
   pickle.dump([pids, photo_feat], open(os.path.join(outdir, "photo_feat.p"), "wb"))
+  pickle.dump([pids, photo_feat], open(os.path.join(outdir, "photo_feat_pca.p"), "wb"))
+
 
 
 

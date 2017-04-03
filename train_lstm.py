@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mes
 flags = tf.flags
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
 flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_tr.p", "data_path")
-flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
+flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat_pca.p", "photo_feat")
 flags.DEFINE_string("model", "lstm_q_i", "model_name")
 
 
