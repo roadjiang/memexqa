@@ -44,7 +44,7 @@ def build_lr_embedding_q_i(placeholders, photo_feat_file, vocabulary_size, num_c
   return fc1_o
 
 def train_lr_embedding_q_i(loss, global_step):
-  return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+  return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 300, max_grad_norm = 5)
 
 def build_bow(placeholders, num_classes):
   with tf.name_scope('bow'):
@@ -84,7 +84,7 @@ def build_lstm_q(placeholders, photo_feat_file, vocabulary_size, num_classes, em
     return fc2_o
   
 def train_lstm_q(loss, global_step):
-  return train(loss, global_step, 0.3, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+  return train(loss, global_step, 0.3, optimizer = "GradientDescentOptimizer", decay_steps = 300, max_grad_norm = 5)
 
 
 def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
@@ -127,7 +127,7 @@ def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, 
     return fc2_o
   
 def train_lstm_q_i(loss, global_step):
-  return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 300, max_grad_norm = 3)
+  return train(loss, global_step, 0.3, optimizer = "GradientDescentOptimizer", decay_steps = 300, max_grad_norm = 3)
 
   
 

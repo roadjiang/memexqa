@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mes
 flags = tf.flags
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
 flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_tr.p", "data_path")
-flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat_pca.p", "photo_feat")
+flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
 flags.DEFINE_string("model", "lstm_q_i", "model_name")
 
 
@@ -89,7 +89,7 @@ def train_model(infile):
     init = tf.initialize_all_variables()
     
     # Create a saver for writing training checkpoints.
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(max_to_keep = 10)
     
     if FLAGS.retrain: # whether to retrain from a previous model?
       ckpt = tf.train.get_checkpoint_state(train_dir)
@@ -113,7 +113,7 @@ def train_model(infile):
     
     iter_eval = myeval.Eval_Metrics() 
 
-    for _ in xrange(int(1e06)):
+    for _ in xrange(int(2e04)):
       
       start_time = time.time()
       
@@ -150,7 +150,7 @@ def train_model(infile):
         summary_writer.add_summary(summary_str, global_step_val)
         summary_writer.flush()
       
-      if global_step_val % epoch_size == 0:
+      if global_step_val % (10*epoch_size) == 0:
         # reach an epoch
         epoch_info = iter_eval.get_metrics_and_clear()
         epoch_info["global_step"] = global_step_val

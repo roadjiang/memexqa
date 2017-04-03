@@ -118,7 +118,7 @@ def test_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
+      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs", "Qs_l", "Is_l"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       

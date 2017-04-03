@@ -93,7 +93,7 @@ def train_model(infile):
     init = tf.initialize_all_variables()
     
     # Create a saver for writing training checkpoints.
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(max_to_keep = 10)
     
     if FLAGS.retrain: # whether to retrain from a previous model?
       ckpt = tf.train.get_checkpoint_state(train_dir)
@@ -117,7 +117,7 @@ def train_model(infile):
     
     iter_eval = myeval.Eval_Metrics() 
 
-    for _ in xrange(int(1e05)):
+    for _ in xrange(int(1e04)):
       
       start_time = time.time()
       
@@ -128,7 +128,7 @@ def train_model(infile):
       batch_binary_labels[batch_binary_labels < 0] = 0
       
       feed_dict = {}
-      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs"]]
+      modalities = [t for t in train_data._modalities if t not in ["qids", "labels", "As", "PTs", "ATs", "Qs_l", "Is_l"]]
       for k in modalities:
         feed_dict[placeholders[k]] = batch_data[k]
       
@@ -139,6 +139,7 @@ def train_model(infile):
       duration = time.time() - start_time
      
       #logging.info(iter_info_str)
+      predictions_val = np.random()
       iter_accuracy = myeval.calculate_accuracy_batch(predictions_val, batch_data["labels"])
       iter_eval.accumulate(iter_accuracy, loss_val, duration, FLAGS.batch_size)
       
@@ -154,7 +155,7 @@ def train_model(infile):
         summary_writer.add_summary(summary_str, global_step_val)
         summary_writer.flush()
       
-      if global_step_val % epoch_size == 0:
+      if global_step_val % (10*epoch_size) == 0:
         # reach an epoch
         epoch_info = iter_eval.get_metrics_and_clear()
         epoch_info["global_step"] = global_step_val
