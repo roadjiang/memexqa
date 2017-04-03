@@ -5,10 +5,10 @@ Created on Mar 10, 2017
 '''
 
 import tensorflow as tf
+import pickle
 
 
-
-def build_lr_embedding_q(placeholders, vocabulary_size, num_classes, embedding_size = 300):
+def build_lr_embedding_q(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
   """logistic regression with embedding input"""
   with tf.name_scope('lr_Q'):
     embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
@@ -20,23 +20,32 @@ def build_lr_embedding_q(placeholders, vocabulary_size, num_classes, embedding_s
     fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
   return fc1_o
 
-def train_lr_embedding_q(loss, global_step, starter_learning_rate):
-  return train(loss, global_step, starter_learning_rate, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+def train_lr_embedding_q(loss, global_step):
+  return train(loss, global_step, 0.5, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
 
-def build_lr_embedding_q_i(q_placeholder, i_placeholder, vocabulary_size, num_classes, embedding_size = 300):
+def build_lr_embedding_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
   """logistic regression with embedding input"""
   with tf.name_scope('lr_Q_I'):
-    embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
-    q_embedding = tf.nn.embedding_lookup(embedding, q_placeholder)
-    q_embedding = tf.reduce_max(q_embedding, 1)
-
-    inputs = tf.concat(1, [q_embedding, i_placeholder])
+    q_embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
+    q_vec = tf.nn.embedding_lookup(q_embedding, placeholders["Qs"])
+    q_vec = tf.reduce_max(q_vec, 1)
+    
+    _, photo_feat = pickle.load(open("/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "rb"))
+    i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
+    i_vec = tf.nn.embedding_lookup(i_embedding, placeholders["Is"])
+    i_vec = tf.reduce_max(i_vec, 1)
+    
+    inputs = tf.concat(1, [q_vec, i_vec])
     
     # add a fully connected layer
     fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], num_classes], initializer=tf.random_normal_initializer())
     fc1_b = tf.get_variable("fc1_b", [num_classes], initializer=tf.random_normal_initializer())
     fc1_o = tf.nn.sigmoid(tf.matmul(inputs, fc1_w) + fc1_b)
   return fc1_o
+
+def train_lr_embedding_q_i(loss, global_step):
+  return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
+
 
 def build_lr_embedding_q_i_gt(q_placeholder, i_placeholder, g_placeholder, t_placeholder, vocabulary_size, num_classes, embedding_size = 300, device="cpu"):
   """logistic regression with embedding input"""

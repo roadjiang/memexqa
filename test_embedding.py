@@ -20,14 +20,14 @@ import reader_embedding
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
-
 flags = tf.flags
 
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
 flags.DEFINE_string("test_dir", "/Users/lujiang/run/", "Testing output directory")
-flags.DEFINE_string("model", "lr_embedding_q", "model_name")
+flags.DEFINE_string("model", "lr_embedding_q_i", "model_name")
 
 flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_ts.p", "data_path")
+flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
 flags.DEFINE_string("ground_truth_file", "/Users/lujiang/data/memex_dataset/exp/qa_album.p", "ground_truth_file")
 
 flags.DEFINE_integer("batch_size", 4, "test batch size")
@@ -82,7 +82,7 @@ def test_model(infile):
 
     
     # Build a Graph that computes predictions from the inference model.
-    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, len(test_data.vocabulary), test_data._num_classes)
+    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, FLAGS.photo_feat, len(test_data.vocabulary), test_data._num_classes)
 
     # Add to the Graph the Ops for loss calculation.
     loss = models.calculate_softmax_loss(predictions, placeholders["labels"])
