@@ -87,7 +87,7 @@ def train_lstm_q(loss, global_step):
   return train(loss, global_step, 0.3, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
 
 
-def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 300):
+def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, embedding_size = 100):
   with tf.name_scope('lstm_Q_I'):
     batch_size = int(placeholders["Qs"]._shape[0])
     num_steps = int(placeholders["Qs"]._shape[1])
