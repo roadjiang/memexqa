@@ -12,7 +12,6 @@ import pickle
 class DataSet(object):
   
 
-
   def __init__(self, infile, max_input_window_size = 8):
     tr = pickle.load(open(infile, "rb"))
     

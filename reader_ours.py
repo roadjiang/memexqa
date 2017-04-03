@@ -26,10 +26,9 @@ class DataSet(object):
     self._PTs = dataset["PTs"]
     self._ATs = dataset["ATs"]
     
-    if "Is" in dataset: 
+    if "Is" in dataset and len(dataset["Is"]) > 0: 
       self._Is = dataset["Is"]
       self._image_feat_dim = self._Is.shape[1]
-
     
     self._vocabulary = dataset["vocabulary"]
     self._classes = dataset["classes"]

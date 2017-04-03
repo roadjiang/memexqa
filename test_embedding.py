@@ -25,17 +25,18 @@ flags = tf.flags
 
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/lr_embedding_tr", "Training output directory")
 flags.DEFINE_string("test_dir", "/Users/lujiang/run/lr_embedding_ts", "Testing output directory")
+flags.DEFINE_string("model", "lr_embedding_q", "model_name")
+flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_ts.p", "data_path")
 
 flags.DEFINE_integer("batch_size", 4, "test batch size")
-flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_ts.p", "data_path")
 
 FLAGS = flags.FLAGS
 
 def test_model(infile):
   """Runs the trained model"""
   batch_size = FLAGS.batch_size
-  train_dir = FLAGS.train_dir
-  test_dir = FLAGS.test_dir
+  train_dir = os.path.join(FLAGS.train_dir, FLAGS.model)
+  test_dir = os.path.join(FLAGS.test_dir, FLAGS.model)
   
   logging.info("Start loading the data")
   test_data = reader_embedding.DataSet(infile)
@@ -49,6 +50,7 @@ def test_model(infile):
   
   parameter_info = ["Parameter Info:"]
   parameter_info.append("====================")
+  parameter_info.append("model = {}".format(FLAGS.model))
   parameter_info.append("loaded trained model: {}".format(train_dir))
   parameter_info.append("#test_examples = {}".format(test_data.num_examples))
   parameter_info.append("test_batch_size = {}".format(batch_size))
@@ -63,23 +65,25 @@ def test_model(infile):
 
   with tf.Graph().as_default(), tf.Session() as session:
     logging.info("Start constructing computation graph.")
-
     global_step = tf.Variable(0, name='global_step', trainable=False, dtype=tf.int32)
-    q_pl = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
-    i_pl = tf.placeholder(tf.float32, [batch_size, test_data.image_feature_dim])
-    g_pl = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
-    t_pl = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
-    
-    labels_pl = tf.placeholder(tf.int32, [batch_size, test_data.num_classes])
+
+
+    placeholders = {}
+    placeholders["Qs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Is"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Gs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["Ts"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["labels"] = tf.placeholder(tf.int32, [batch_size, test_data.num_classes])
+
+    placeholders["ATs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
+    placeholders["PTs"] = tf.placeholder(tf.int32, [batch_size, test_data.max_window_size])
 
     
     # Build a Graph that computes predictions from the inference model.
-    #predictions = models.build_lr_embedding_q(q_pl, len(test_data.vocabulary), test_data._num_classes)
-    #predictions = models.build_lr_embedding_q_i(q_pl, i_pl, len(test_data.vocabulary), test_data._num_classes)
-    predictions = models.build_lr_embedding_q_i_gt(q_pl, i_pl, g_pl, t_pl, len(test_data.vocabulary), test_data._num_classes)
+    predictions = getattr(models, "build_{}".format(FLAGS.model))(placeholders, len(test_data.vocabulary), test_data._num_classes)
 
     # Add to the Graph the Ops for loss calculation.
-    loss = models.calculate_softmax_loss(predictions, labels_pl)
+    loss = models.calculate_softmax_loss(predictions, placeholders["labels"])
 
     saver = tf.train.Saver()
     
@@ -111,8 +115,12 @@ def test_model(infile):
       batch_binary_labels = batch_data["labels"].copy()
       batch_binary_labels[batch_binary_labels < 0] = 0
       
-      feed_dict = {q_pl:batch_data["Qs"], i_pl:batch_data["Is"], labels_pl:batch_binary_labels,
-                   g_pl:batch_data["Gs"], t_pl:batch_data["Ts"]}
+      feed_dict = {}
+      modalities = [t for t in test_data._modalities if t not in ["qids", "labels", "PTs", "ATs"]]
+      for k in modalities:
+        feed_dict[placeholders[k]] = batch_data[k]
+      
+      feed_dict[placeholders["labels"]] = batch_binary_labels
             
       global_step_val, loss_val, predictions_val = session.run([global_step, loss, predictions], feed_dict=feed_dict)
       global_step_val = global_step_val + 1
@@ -127,11 +135,11 @@ def test_model(infile):
       
       
       # add predictions the results
-      for i in range(batch_data["ids"].shape[0]):
+      for i in range(batch_data["qids"].shape[0]):
         true_class = np.where(batch_binary_labels[i]>0)[0][0]
         pred_class = iter_pred_classes[i]
-        results.append([int(batch_data["ids"][i]), true_class, pred_class, 
-                       class_vocabulary[true_class], class_vocabulary[pred_class]])
+        results.append([int(batch_data["qids"][i]), true_class, pred_class, 
+                       class_vocabulary[true_class].encode('utf8'), class_vocabulary[pred_class].encode('utf8')])
 
       if test_data.epochs_completed == 1: break # read rhe end of an epoch
 

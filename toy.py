@@ -38,5 +38,5 @@ outputs, last_states = tf.nn.rnn(cell=cell, inputs=inX, sequence_length = X_leng
 
 with tf.Session() as session:
   session.run(tf.initialize_all_variables())
-  val = session.run(last_states, feed_dict=None)
-  print val
+  val1 = session.run(outputs[11], feed_dict=None)
+  print val1

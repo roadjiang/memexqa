@@ -37,7 +37,7 @@ def train(loss, global_step, starter_learning_rate, max_grad_norm = 5):
     tf.add_to_collection("lr", learning_rate)
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(loss, tvars), max_grad_norm)
-    optimizer = tf.train.AdagradOptimizer(learning_rate) # tune the optimizer GradientDescentOptimizer AdadeltaOptimizer
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate) # tune the optimizer GradientDescentOptimizer AdadeltaOptimizer
     with tf.control_dependencies([loss]):
       train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=global_step)
   return train_op
