@@ -93,10 +93,7 @@ def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, 
     num_steps = int(placeholders["Qs"]._shape[1])
     num_layers = 1
     
-    
-    _, photo_feat = pickle.load(open(photo_feat_file, "rb"))
-    i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
-    
+  
     q_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.BasicLSTMCell(embedding_size, forget_bias=0.0, state_is_tuple=True)] * num_layers, state_is_tuple=True)
     q_initial_state = q_cell.zero_state(batch_size, tf.float32)
     q_embedding = tf.get_variable("embedding", [vocabulary_size, embedding_size])
@@ -105,8 +102,21 @@ def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, 
     with tf.variable_scope('q_lstm'):
       _, q_states = tf.nn.rnn(cell=q_cell, inputs=q_inputs, sequence_length=placeholders["Qs_l"], initial_state=q_initial_state)
 
-    inputs = q_states[-1][1]  # get the last hidden states (dynamic length)
+    _, photo_feat = pickle.load(open(photo_feat_file, "rb"))
+    i_cell = tf.nn.rnn_cell.MultiRNNCell([tf.nn.rnn_cell.BasicLSTMCell(embedding_size, forget_bias=0.0, state_is_tuple=True)] * num_layers, state_is_tuple=True)
+    i_initial_state = q_cell.zero_state(batch_size, tf.float32)
+    i_embedding = tf.Variable(photo_feat, trainable = False, name="i_embedding", dtype = tf.float32)
+    i_inputs = tf.nn.embedding_lookup(i_embedding, placeholders["Is"])
+    fci_w = tf.get_variable("fci_w", [int(i_inputs.get_shape()[2]), embedding_size], initializer=tf.random_normal_initializer())
+    fci_b = tf.get_variable("fci_b", [ embedding_size], initializer=tf.random_normal_initializer())
+    #fci_o = tf.matmul(fci_w, i_inputs) + fci_b
+    
+    i_inputs = [tf.nn.sigmoid(tf.matmul(tf.squeeze(t, [1]), fci_w) + fci_b)  for t in tf.split(1, num_steps, i_inputs)]
+    with tf.variable_scope('i_lstm'):
+      _, i_states = tf.nn.rnn(cell=i_cell, inputs=i_inputs, sequence_length=placeholders["Is_l"], initial_state=i_initial_state)
 
+    inputs = tf.concat(1, [q_states[-1][1], i_states[-1][1]]) # get the last hidden states (dynamic length)
+    
     fc_hidden_nodes = 512
     fc1_w = tf.get_variable("fc1_w", [inputs.get_shape()[1], fc_hidden_nodes], initializer=tf.random_normal_initializer())
     fc1_b = tf.get_variable("fc1_b", [fc_hidden_nodes], initializer=tf.random_normal_initializer())
@@ -116,6 +126,10 @@ def build_lstm_q_i(placeholders, photo_feat_file, vocabulary_size, num_classes, 
     fc2_b = tf.get_variable("fc2_b", [num_classes], initializer=tf.random_normal_initializer())
     fc2_o = tf.nn.relu(tf.matmul(fc1_o, fc2_w) + fc2_b)
     return fc2_o
+  
+def train_lstm_q_i(loss, global_step):
+  return train(loss, global_step, 0.2, optimizer = "GradientDescentOptimizer", decay_steps = 300, max_grad_norm = 3)
+
   
 
 def build_ours(q_placeholder, q_len_placeholder, i_placeholder, g_placeholder, t_placeholder, pt_placeholder, at_placeholder, vocabulary_size, num_classes, embedding_size = 100):

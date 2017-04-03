@@ -22,7 +22,7 @@ flags = tf.flags
 flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
 flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_tr.p", "data_path")
 flags.DEFINE_string("photo_feat", "/Users/lujiang/data/memex_dataset/exp/photo_feat.p", "photo_feat")
-flags.DEFINE_string("model", "lstm_q", "model_name")
+flags.DEFINE_string("model", "lstm_q_i", "model_name")
 
 
 flags.DEFINE_integer("batch_size", 64, "training batch size")
@@ -67,6 +67,8 @@ def train_model(infile):
     placeholders["Qs_l"] = tf.placeholder(tf.int32, [batch_size,])
     
     placeholders["Is"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
+    placeholders["Is_l"] = tf.placeholder(tf.int32, [batch_size,])
+
     placeholders["Gs"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
     placeholders["Ts"] = tf.placeholder(tf.int32, [batch_size, train_data.max_window_size])
     placeholders["labels"] = tf.placeholder(tf.int32, [batch_size, train_data.num_classes])

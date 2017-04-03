@@ -38,7 +38,7 @@ class DataSet(object):
     self._data["PTs"], self._data["PTs_l"] = utils.pad_input(self._data["PTs"], max_input_window_size, self._end_token_id)
 
     
-    self._modalities = ["qids", "labels", "As", "Qs", "Is", "Ts", "Gs", "PTs", "ATs", "Qs_l"]
+    self._modalities = ["qids", "labels", "As", "Qs", "Is", "Ts", "Gs", "PTs", "ATs", "Qs_l", "Is_l"]
 
     
     self._num_examples = len(self._data["qids"])
