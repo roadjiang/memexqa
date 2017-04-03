@@ -23,10 +23,12 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mes
 
 flags = tf.flags
 
-flags.DEFINE_string("train_dir", "/Users/lujiang/run/lr_embedding_tr", "Training output directory")
-flags.DEFINE_string("test_dir", "/Users/lujiang/run/lr_embedding_ts", "Testing output directory")
+flags.DEFINE_string("train_dir", "/Users/lujiang/run/", "Training output directory")
+flags.DEFINE_string("test_dir", "/Users/lujiang/run/", "Testing output directory")
 flags.DEFINE_string("model", "lr_embedding_q", "model_name")
+
 flags.DEFINE_string("data_path", "/Users/lujiang/data/memex_dataset/exp/lr_embedding_ts.p", "data_path")
+flags.DEFINE_string("ground_truth_file", "/Users/lujiang/data/memex_dataset/exp/qa_album.p", "ground_truth_file")
 
 flags.DEFINE_integer("batch_size", 4, "test batch size")
 
@@ -154,7 +156,7 @@ def test_model(infile):
     
     # output the predictions
     write_prediction_csv(os.path.join(test_dir, "predictions.csv"), results)
-    myeval.evaluate_csv(os.path.join(test_dir, "predictions.csv"), "/Users/lujiang/data/memex_dataset/exp/qa_album.p")
+    myeval.evaluate_csv(os.path.join(test_dir, "predictions.csv"), FLAGS.ground_truth_file)
 
 def write_prediction_csv(outfile, results):
   with open(outfile, 'wb') as csvfile:

@@ -21,7 +21,7 @@ def build_lr_embedding_q(placeholders, vocabulary_size, num_classes, embedding_s
   return fc1_o
 
 def train_lr_embedding_q(loss, global_step, starter_learning_rate):
-  return train(loss, global_step, starter_learning_rate, optimizer = "GradientDescentOptimizer", decay_steps = 1000, max_grad_norm = 5)
+  return train(loss, global_step, starter_learning_rate, optimizer = "GradientDescentOptimizer", decay_steps = 500, max_grad_norm = 5)
 
 def build_lr_embedding_q_i(q_placeholder, i_placeholder, vocabulary_size, num_classes, embedding_size = 300):
   """logistic regression with embedding input"""
