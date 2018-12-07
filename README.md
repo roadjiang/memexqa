@@ -1,3 +1,7 @@
 # memexqa
 
-The cleanup code and baseline on Memexqa v1.0 will be available soon.
+Please find the data at:
+https://memexqa.cs.cmu.edu/
+
+The starter code can be found at:
+https://github.com/JunweiLiang/MemexQA_StarterCode
